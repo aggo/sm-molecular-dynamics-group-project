@@ -1,1 +1,2 @@
-# simulation-methods2017
+# Molecular Dynamics
+Project for the Simultion Methods course, M2.

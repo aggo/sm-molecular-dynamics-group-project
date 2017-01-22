@@ -84,7 +84,7 @@ void program_timing_begin()
     time(&time_start);
 }
 
-void program_timing_end(int nrparticles, int run_type)
+void program_timing_end()
 {
     double time_difference;
     struct tm *timeinfo;
@@ -100,13 +100,7 @@ void program_timing_end(int nrparticles, int run_type)
     printf("Program ended at: %s",asctime(timeinfo));
 
     printf("Program running time = %lf seconds\n", time_difference);
-    printf("%d %lf\n",nrparticles,time_difference);
-
-
-    FILE *f;
-    f = fopen("final.txt","a");
-    fprintf(f,"%d %d %lf\n",run_type, nrparticles,time_difference);
-    fclose(f);
+    printf("%lf\n",time_difference);
 }
 
 void tabulate_forces()
@@ -134,28 +128,12 @@ void tabulate_forces()
     tabulalt_lepes = (x_max*x_max-x_min*x_min)/(N_tabulated-1.0);
     printf("Tabulalt start = %lf, lepes = %lf\n",tabulalt_start,tabulalt_lepes);
 
-    /*
-     0 xmin^2                    f/r
-     1 xmin^2 + 1 * lepes        f/r
-     2 xmin^2 + 2 * lepes        f/r
-
-     lepes = (x_max*x_max-x_min*x_min)/(N_tabulated-1.0)
-
-
-     dr^2
-
-     index = (int)floor( ( dr^2 - tabulalt_start) / tabulalt_lepes )
-
-
-     */
 }
 
 void rebuild_verlet_list()
 {
     int i,j;
     double dx,dy,dr2;
-
-    //printf("rebuilding Verlet\n");fflush(stdout);
 
     N_vlist = 0;
     vlist1 = (int *) realloc(vlist1,N_vlist*sizeof(int));
@@ -201,7 +179,7 @@ void rebuild_verlet_list()
     //printf("Verlet rebuilt at t=%d\n",t);
 }
 
-void initialize_particles(int systemSize, int nrParticles)
+void initialize_particles()
 {
     int i,j,ii,overlap;
     double dx,dy,dr,dr2;
@@ -210,31 +188,17 @@ void initialize_particles(int systemSize, int nrParticles)
 
     multiplier = 512.0;
 
-    SX = systemSize;//2.0*sqrt(multiplier);//2.5*sqrt(multiplier);
-    SY = systemSize;//2.0*sqrt(multiplier);
+    SX = 47;//2.0*sqrt(multiplier);//2.5*sqrt(multiplier);
+    SY = 47;//2.0*sqrt(multiplier);
     SX2 = SX/2.0;
     SY2 = SY/2.0;
 
-    N = nrParticles;
+    N = 23*23;
 
     particles = (struct particle_struct *) malloc(N*sizeof(struct particle_struct));
 
     dt = 0.002;
     ii=0;
-
-// for initializing a regular square grid
-//    for(i=0;i<23;i++)
-//        for(j=0;j<23;j++)
-//            {
-//            tempx = ((double)i+(j%2)*0.5) * 2.0;
-//            tempy = (double)j * 2.0;
-//
-//            //printf("%lf %lf\n",tempx,tempy);fflush(stdout);
-//
-//            particles[ii].x = tempx;
-//            particles[ii].y = tempy;
-
-    // for initializing randomly
 
     for(i=0;i<N;i++)
     {
@@ -278,15 +242,10 @@ void initialize_particles(int systemSize, int nrParticles)
         particles[ii].drx_so_far = 0.0;
         particles[ii].dry_so_far = 0.0;
 
-//        particles[ii].color = 0;
-//        /*
+
         if ( rand()/(RAND_MAX+1.0) < 0.5)   particles[i].color = 0;
         else                                particles[i].color = 1;
-//        */
 
-        //printf("%d",particles[i].color);
-        //rand()%2 Never ever use this when generating random numbers
-        //has very bad properties
         ii++;
     }
 
@@ -301,11 +260,8 @@ void initialize_pinning_sites()
     N_pins = 70;
 
     pinningsites = (struct pinning_struct *) malloc(N*sizeof(struct pinning_struct));
-
-
     for(i=0;i<N_pins;i++)
     {
-
         do
         {
             int nr_tries = 0;
@@ -480,7 +436,7 @@ void calculate_pairwise_forces()
         }
 }
 
-void calculate_pairwise_forces_with_verlet(int run_type)
+void calculate_pairwise_forces_with_verlet()
 {
     int i,j,ii;
     double dx,dy;
@@ -506,7 +462,6 @@ void calculate_pairwise_forces_with_verlet(int run_type)
 
         //recall the tabulated value of the force
 
-         if (run_type==1||run_type==3) {
              tab_index = (int) floor((dr2 - tabulalt_start) / (tabulalt_lepes));
              if ((tab_index >= N_tabulated)) {
                  //printf("tab_index = %d\n",tab_index);
@@ -519,25 +474,6 @@ void calculate_pairwise_forces_with_verlet(int run_type)
                  fy = tabulated_f_per_r[tab_index] * dy;
              }
 
-         }
-        else {
-             //direct calculation of the force
-
-             dr = sqrt(dr2); //this is EVIL
-
-             if (dr < 0.1) {
-                 f = 97.53;
-                 printf("Warning! Particles %d and %d too close at time %d\n", i, j, t);
-             } else
-                 //check if dr>4.0 I can cut off the force
-             {
-                 f = 1 / dr2 * exp(-0.25 * dr);
-             }
-
-             fx = f * dx / dr;
-             fy = f * dy / dr;
-             //printf("%lf %lf hasonlitva %lf %lf\n",fx,fy,f*dx/dr,f*dy/dr);
-         }
 
         particles[i].fx += fx;
         particles[i].fy += fy;
@@ -672,73 +608,22 @@ fprintf(statistics_file,"%d %lf\n",t,avg_vx);
  *
  */
 
-int main(int argc, char *argv[])
-{
-
-    const int run_types[4] = {0,1,2,3};
-    const int nr_particles[5] = {100,400,900,1600,2500};
-    const int system_size[5] = {20,80,180,320,500};
-
-//   const int run_types[1] = {3};
-//    const int nr_particles[1] = {100};
-//    const int system_size[1] = {20};
-
-
-    int symNr = 0;
-
-//    int setup_index = atoi(argv[1]);
-//    int run_type = atoi(argv[2]);
-
-
-    for (int setup_index=3; setup_index<4; setup_index++){
-        for (int run_type=0; run_type<4; run_type++) {
-//            if (setup_index!=5&& (run_type==1||run_type==3)){
-//                break;
-//            }
-            int nr_part = nr_particles[setup_index];
-            int sys_size = system_size[setup_index];
-
-            printf("Simulation %d run \n", symNr);
-            printf("Nr part = %d, run type = %d", nr_part, run_type);
-            symNr++;
-
-
+int main(int argc, char *argv[]) {
             program_timing_begin();
 
-            /*
-             * 0 - no tab, no verlet
-             * 1 - tab forces, no verlet
-             * 2 - no tab, verlet
-             * 3 - tab forces, verlet
-             */
+            tabulate_forces();
 
-            if (run_type == 1 || run_type == 3) {
-                tabulate_forces();
-            }
-
-            initialize_particles(sys_size, nr_part);
-//            initialize_pinning_sites();
+            initialize_particles();
+            initialize_pinning_sites();
             write_contour_file();
-            if (run_type == 2 || run_type == 3) {
-                rebuild_verlet_list();
-            }
+            rebuild_verlet_list();
 
             moviefile = fopen("results.mvi", "w");
-            //write_movie_header();
             statistics_file = fopen("stat.txt", "wt");
             for (t = 0; t < 100000; t++) {
-                if (run_type == 2 || run_type == 3) {
-                    calculate_pairwise_forces_with_verlet(run_type);
-                }
-
-                //calculate_thermal_force();
-                if (run_type == 0 || run_type == 1) {
-                    calculate_pairwise_forces();
-                }
-
-
+                calculate_pairwise_forces_with_verlet();
                 calculate_external_forces();
-//                calculate_pinning_force();
+                calculate_pinning_force();
 
                 //right now I have all the information
                 //time to calculate some statistics
@@ -753,7 +638,6 @@ int main(int argc, char *argv[])
 
                 if (t % 100 == 0)
                     write_cmovie();
-                //write_movie_frame();
 
                 if (t % 1000 == 0) {
                     printf("time = %d\n", t);
@@ -763,71 +647,11 @@ int main(int argc, char *argv[])
 
             fclose(moviefile);
             fclose(statistics_file);
-            program_timing_end(nr_part, run_type);
+            program_timing_end();
 
 
-        }
-    }
+
 
 
     return 0;
-//    printf("Simulation 1 run\n");
-//    program_timing_begin();
-//
-//    tabulate_forces();
-//
-//    initialize_particles();
-//    initialize_pinning_sites();
-//    write_contour_file();
-//    rebuild_verlet_list();
-//
-//    moviefile = fopen("results.mvi","w");
-//    //write_movie_header();
-//    statistics_file = fopen("stat.txt","wt");
-//    for(t=0;t<10000;t++)
-//    {
-//        calculate_pairwise_forces_with_verlet();
-//
-//
-//        //calculate_thermal_force();
-//        //calculate_pairwise_forces();
-//
-//
-//        calculate_external_forces();
-//        calculate_pinning_force();
-//
-//        //right now I have all the information
-//        //time to calculate some statistics
-//        write_statistics();
-//
-//        move_particles();
-//
-//
-//        if (flag_to_rebuild_Verlet)
-//            rebuild_verlet_list();
-//
-//
-//        if (t%100==0)
-//            write_cmovie();
-//        //write_movie_frame();
-//
-//        if (t%500==0)
-//        {
-//            printf("time = %d\n",t);
-//            fflush(stdout);
-//        }
-//    }
-//
-//    fclose(moviefile);
-//    fclose(statistics_file);
-//    program_timing_end();
-//    return 0;
 }
-
-
-
-// to run main: gcc main.c -o main -lm
-// to run plot: gcc plot.c -o plot -lm -L/usr/X11R6/lib -lX11 -I/usr/X11R6/include/
-// then ./plot gfile
-// then set delay 10
-// then plot result.mvi

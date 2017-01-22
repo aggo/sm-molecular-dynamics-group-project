@@ -243,8 +243,7 @@ void initialize_particles()
         particles[ii].dry_so_far = 0.0;
 
 
-        if ( rand()/(RAND_MAX+1.0) < 0.5)   particles[i].color = 0;
-        else                                particles[i].color = 1;
+        particles[i].color = 0;
 
         ii++;
     }
@@ -572,6 +571,8 @@ void write_cmovie()
         floatholder = 1.0;//cum_disp, cmovie format
         fwrite(&floatholder,sizeof(float),1,moviefile);
     }
+
+
 
 }
 

@@ -690,7 +690,7 @@ int main(int argc, char *argv[])
 //    int run_type = atoi(argv[2]);
 
 
-    for (int setup_index=3; setup_index<4; setup_index++){
+    for (int setup_index=0; setup_index<4; setup_index++){
         for (int run_type=0; run_type<4; run_type++) {
 //            if (setup_index!=5&& (run_type==1||run_type==3)){
 //                break;
@@ -718,7 +718,7 @@ int main(int argc, char *argv[])
 
             initialize_particles(sys_size, nr_part);
 //            initialize_pinning_sites();
-            write_contour_file();
+//            write_contour_file();
             if (run_type == 2 || run_type == 3) {
                 rebuild_verlet_list();
             }
